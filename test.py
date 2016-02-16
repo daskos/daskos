@@ -1,18 +1,16 @@
-from debas.mesos import get, get_satyr
-from debas.imperative import mesos
+from dask_mesos.mesos import get, get_satyr
 from dask import set_options
-import dask
+from dask.imperative import do
 
-
-@mesos
+@do
 def inc(x):
     return x+1
 
-@mesos
+@do
 def add(x, y):
     return x+y
 
-@mesos
+@do
 def mul(x, y):
     return x*y
 
@@ -20,4 +18,4 @@ def mul(x, y):
 with set_options(get=get):
     x = inc(666)
     y = mul(666, 777)
-    print add(y, x).compute().get()
+    print add(y, x).compute()
