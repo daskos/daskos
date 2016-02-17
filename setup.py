@@ -20,5 +20,5 @@ setup(name='dask.mesos',
       setup_requires=['pytest-runner'],
       tests_require=['pytest'],
       dependency_links=[
-          'git+ssh://git@github.com/lensacom/satyr.git'],
+          'git+ssh://git@github.com/lensacom/satyr.git#egg=satyr-0.1'],
       zip_safe=False)
