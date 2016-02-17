@@ -2,7 +2,7 @@
 
 from os.path import exists
 from setuptools import setup
-import debas
+
 
 setup(name='dask.mesos',
       version='0.1',
