@@ -3,7 +3,7 @@ Run dask workflows on your Mesos cluster.
 # Example
 
 ```python
-from dask_mesos.mesos import get, gmesos
+from dask_mesos.mesos import get, mesos
 from dask import set_options
 
 @mesos(cpus=0.5, mem=64)
