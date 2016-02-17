@@ -33,7 +33,7 @@ build:
     - script:
         name: 'test'
         code: |
-          pip install . 
+          pip install --process-dependency-links . 
     # # This pip-install clears the local wheel cache
     # - pip-install:
     #     clean_wheel_dir: true
