@@ -1,8 +1,8 @@
-from dask_mesos.mesos import get, get_satyr, mesos
+from dask_mesos.mesos import get, mesos
 from dask import set_options
 from dask.imperative import do
 
-@mesos
+@do
 def inc(x):
     return x+1
 
