@@ -24,6 +24,12 @@ def get_satyr():
     return _globals['satyr']
 
 
+def create_satyr_compatible_config(mesos_settings):
+    return {
+        'resources': {name: val for name, val in mesos_settings.items() if name in ['cpus', 'mem', 'disk', 'ports']}
+    }
+
+
 def apply_async_wrapper(fn, *args, **kwargs):
     """We only send the pickled function defined by the user to
     the Mesos executor; so we have to run the async.execute_task
@@ -31,8 +37,9 @@ def apply_async_wrapper(fn, *args, **kwargs):
     arguments. (Especially the queue.)"""
 
     def wrap(func, *args, **kwargs):
-        # TODO format mesos_settings to be applied by satyr
-        print func.mesos_settings
+        if hasattr(func, 'mesos_settings'):
+            kwargs.update(create_satyr_compatible_config(func.mesos_settings))
+
         return get_satyr().apply_async(func, args=args, kwargs=kwargs)
 
     def resolve_arguments(values=(), asyncs={}):
