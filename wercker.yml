@@ -25,12 +25,15 @@ build:
   # Read more about steps on our dev center:
   # http://devcenter.wercker.com/docs/steps/index.html
   steps:
+    - add-to-known_hosts:
+        hostname: github.com
+        fingerprint: 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48
     # A step that executes `pip install` command.
     #- pip-install
     - script:
         name: 'test'
         code: |
-          python setup.py test
+          pip install . 
     # # This pip-install clears the local wheel cache
     # - pip-install:
     #     clean_wheel_dir: true
@@ -46,4 +49,4 @@ build:
     - script:
         name: python unit test
         code: |
-          python -m pytest
+          py.test
