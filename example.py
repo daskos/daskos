@@ -1,4 +1,5 @@
-from dask_mesos.mesos import get, mesos
+from dask_mesos.mesos import get
+from dask_mesos.imperative import mesos
 from dask import set_options
 from dask.imperative import do
 
