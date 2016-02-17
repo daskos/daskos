@@ -1,10 +1,13 @@
+import os
+from toolz import curry
+
 from satyr.multiprocess import create_satyr, SatyrAsyncResult
 
 from dask.context import _globals
 from dask.compatibility import Queue
 from dask.multiprocessing import _process_get_id
+from dask.imperative import do
 from dask.async import get_async
-import os
 
 
 def get_satyr():
@@ -28,6 +31,8 @@ def apply_async_wrapper(fn, *args, **kwargs):
     arguments. (Especially the queue.)"""
 
     def wrap(func, *args, **kwargs):
+        # TODO format mesos_settings to be applied by satyr
+        print func.mesos_settings
         return get_satyr().apply_async(func, args=args, kwargs=kwargs)
 
     def resolve_arguments(values=(), asyncs={}):
@@ -57,3 +62,9 @@ def get(dsk, keys, **kwargs):
     satyr.sched.driver_states['force_shutdown'] = True
 
     return r
+
+@curry
+def mesos(fn, pure=True, **kwargs):
+    setattr(fn, 'mesos_settings', kwargs)
+
+    return curry(do)(fn, pure=pure)

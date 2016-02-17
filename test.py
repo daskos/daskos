@@ -1,16 +1,16 @@
-from dask_mesos.mesos import get, get_satyr
+from dask_mesos.mesos import get, get_satyr, mesos
 from dask import set_options
 from dask.imperative import do
 
-@do
+@mesos
 def inc(x):
     return x+1
 
-@do
+@mesos(cpus=1)
 def add(x, y):
     return x+y
 
-@do
+@mesos(mem=64)
 def mul(x, y):
     return x*y
 
