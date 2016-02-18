@@ -25,3 +25,9 @@ with set_options(get=get):
     y = mul(66, 77)
     print add(y, x).compute()
 ```
+
+# Build with Wercker-CLI
+
+```bash
+wercker build --working-dir ~/.wercker
+```

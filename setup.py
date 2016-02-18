@@ -16,7 +16,7 @@ setup(name='dask.mesos',
       keywords='mesos dask multiprocessing',
 
       packages=['dask_mesos'],
-      install_requires=['dask', 'satyr'],
+      install_requires=['dask', 'satyr', 'toolz'],
       setup_requires=['pytest-runner'],
       tests_require=['pytest'],
       dependency_links=[
