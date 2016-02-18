@@ -1,12 +1,12 @@
-import pytest
+from __future__ import absolute_import, division, print_function
 
 from dask.imperative import do
-from dask.utils import raises
-
-# from operator import add
 from dask_mesos.imperative import mesos
 
-add = lambda x, y: x + y
+
+def add(x, y):
+    return x + y
+
 
 def test_mesos_is_do():
     add1 = do(add)

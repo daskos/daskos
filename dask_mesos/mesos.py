@@ -1,11 +1,12 @@
+from __future__ import absolute_import, division, print_function
+
 import os
 
-from satyr.multiprocess import create_satyr, SatyrAsyncResult
-
-from dask.context import _globals
-from dask.compatibility import Queue
-from dask.multiprocessing import _process_get_id
 from dask.async import get_async
+from dask.compatibility import Queue
+from dask.context import _globals
+from dask.multiprocessing import _process_get_id
+from satyr.multiprocess import create_satyr
 
 
 def get_satyr():
@@ -23,9 +24,8 @@ def get_satyr():
 
 
 def create_satyr_compatible_config(mesos_settings):
-    return {
-        'resources': {name: val for name, val in mesos_settings.items() if name in ['cpus', 'mem', 'disk', 'ports']}
-    }
+    return {'resources': {name: val for name, val in mesos_settings.items()
+                          if name in ['cpus', 'mem', 'disk', 'ports']}}
 
 
 def apply_async_wrapper(fn, *args, **kwargs):
@@ -41,11 +41,13 @@ def apply_async_wrapper(fn, *args, **kwargs):
         return get_satyr().apply_async(func, args=args, kwargs=kwargs)
 
     def resolve_arguments(values=(), asyncs={}):
-        resolver = lambda asy, v: asy[v].get() if v in asy else v
+        def resolver(asy, v):
+            return asy[v].get() if v in asy else v
         return tuple([resolver(asyncs, val) for val in values])
 
     func_tuple = kwargs['args'][1]
-    kwargs['args'][1] = wrap(func_tuple[0], *resolve_arguments(func_tuple[1:], kwargs['args'][2]))
+    kwargs['args'][1] = wrap(
+        func_tuple[0], *resolve_arguments(func_tuple[1:], kwargs['args'][2]))
     fn(*kwargs['args'])
 
 
@@ -59,8 +61,9 @@ def get(dsk, keys, **kwargs):
         return res.get() if not hasattr(res, '__iter__') else (resolve(res[0]),)
 
     satyr = get_satyr()
-    r = resolve(get_async(apply_async_wrapper, satyr.sched.config['max_tasks'], dsk,
-                          keys, queue=Queue(), get_id=_process_get_id, **kwargs))
+    r = resolve(get_async(apply_async_wrapper, satyr.sched.config['max_tasks'],
+                          dsk, keys, queue=Queue(), get_id=_process_get_id,
+                          **kwargs))
 
     # TODO force satyr devs to implement a better way to kill
     #      their shitty scheduler from the outside :)

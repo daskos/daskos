@@ -1,5 +1,7 @@
-from toolz import curry
+from __future__ import absolute_import, division, print_function
+
 from dask.imperative import do
+from toolz import curry
 
 
 @curry
