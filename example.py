@@ -16,12 +16,10 @@ def add(x, y):
     return x + y
 
 
-@mesos(mem=64)
+@mesos(mem=64, image='bdas-master-3:5000/satyr')
 def mul(x, y):
     return x * y
 
 
 with set_options(get=get):
-    x = inc(666)
-    y = mul(666, 777)
-    print(add(y, x).compute())
+    print(mul(789, 987).compute())

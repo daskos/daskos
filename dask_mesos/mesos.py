@@ -6,16 +6,13 @@ from dask.async import get_async
 from dask.compatibility import Queue
 from dask.context import _globals
 from dask.multiprocessing import _process_get_id
+from satyr.config import Config
 from satyr.multiprocess import create_satyr
 
 
 def get_satyr():
     if 'satyr' not in _globals:
-        # TODO manage configurations better
-        config = {'user': os.getenv('DEBAS_USER', 'root'),
-                  'permanent': True,
-                  'filter_refuse_seconds': 1,
-                  'max_tasks': 10}
+        config = Config({'permanent': True, 'filter_refuse_seconds': 1, 'max_tasks': 10})
 
         # TODO question: is it really ok to store this in _globals?
         _globals['satyr'] = create_satyr(config)
@@ -25,7 +22,8 @@ def get_satyr():
 
 def create_satyr_compatible_config(mesos_settings):
     return {'resources': {name: val for name, val in mesos_settings.items()
-                          if name in ['cpus', 'mem', 'disk', 'ports']}}
+                          if name in ['cpus', 'mem', 'disk', 'ports']},
+            'image': mesos_settings.get('image', None)}
 
 
 def apply_async_wrapper(fn, *args, **kwargs):
