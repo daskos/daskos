@@ -1,4 +1,4 @@
-[![wercker status](https://app.wercker.com/status/27bfce8acd0bc6d5fc75a705bde4732c/s "wercker status")](https://app.wercker.com/project/bykey/27bfce8acd0bc6d5fc75a705bde4732c)
+[![Build Status](http://52.0.47.203:8000/api/badges/lensacom/dask.mesos/status.svg)](http://52.0.47.203:8000/lensacom/dask.mesos)
 
 Run dask workflows on your Mesos cluster.
 
