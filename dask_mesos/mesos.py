@@ -51,7 +51,7 @@ def apply_async_wrapper(fn, *args, **kwargs):
 
 def get(dsk, keys, **kwargs):
     def resolve(res):
-        """We'lll get the final result here as an AsyncResult
+        """We'll get the final result here as an AsyncResult
         which we have to resolve to be compatible w/ other
         dask schedulers. (We shouldn't really force users to
         call .get() after .calculate().) But note that we

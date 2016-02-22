@@ -6,20 +6,22 @@ from dask_mesos.imperative import mesos
 from dask_mesos.mesos import get
 
 
-@do
+@mesos(mem=512, cpus=1, image='bdas-master-3:5000/satyr')
 def inc(x):
     return x + 1
 
 
-@mesos(cpus=1)
+@mesos(mem=512, cpus=1, image='bdas-master-3:5000/satyr')
 def add(x, y):
     return x + y
 
 
-@mesos(mem=64, image='bdas-master-3:5000/satyr')
+@mesos(mem=512, cpus=1, image='bdas-master-3:5000/satyr')
 def mul(x, y):
     return x * y
 
 
 with set_options(get=get):
-    print(mul(789, 987).compute())
+    one = inc(0)
+    alot = add(one, 789)
+    print(mul(alot, 987).compute())
