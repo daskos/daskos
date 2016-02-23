@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import os
-
 from dask.async import get_async
 from dask.compatibility import Queue
 from dask.context import _globals
@@ -12,7 +10,8 @@ from satyr.multiprocess import create_satyr
 
 def get_satyr():
     if 'satyr' not in _globals:
-        config = Config({'permanent': True, 'filter_refuse_seconds': 1, 'max_tasks': 10})
+        config = Config(
+            {'permanent': True, 'filter_refuse_seconds': 1, 'max_tasks': 10})
 
         # TODO question: is it really ok to store this in _globals?
         _globals['satyr'] = create_satyr(config)
