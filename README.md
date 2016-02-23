@@ -83,4 +83,4 @@ Satyr runs the mesos framework behind dask.mesos so you may find yourself in sit
 
 # Available containers
 
-For most use cases you'll have to build your own images but for some simple tasks or testing we have some pre-built images for you. For the mesos decorator you can use the `bdas-master-3:5000/satyr` image and for starting the framework from w/ dask.mesos use a command like this: `docker run --rm -e SATYR_MASTER=bdas-master-2:5050 bdas-master-3:5000/dask.mesos python /dask.mesos/example.py`.
+For most use cases you'll have to build your own images but for some simple tasks or testing we have some pre-built images for you. For the mesos decorator you can use the `bdas-master-3:5000/satyr` image and for starting the framework from w/ dask.mesos use a command like this: `docker run --net=host --rm -e SATYR_MASTER=bdas-master-2:5050 bdas-master-3:5000/dask.mesos python /dask.mesos/example.py`.
