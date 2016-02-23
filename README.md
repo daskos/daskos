@@ -5,26 +5,36 @@ Run dask workflows on your Mesos cluster.
 # Example
 
 ```python
-from dask_mesos.mesos import get
-from dask_mesos.imperative import mesos
+from __future__ import absolute_import, division, print_function
+
 from dask import set_options
+from dask.imperative import do
+from dask_mesos.imperative import mesos
+from dask_mesos.mesos import get
 
-@mesos(cpus=0.5, mem=64)
+
+@mesos(mem=512, cpus=1)
 def inc(x):
-    return x+1
+    """Run stuff on mesos w/o docker but w/ resources set."""
+    return x + 1
 
-@mesos(cpus=0.5, mem=128)
+
+@do
 def add(x, y):
-    return x+y
+    """Run stuff on mesos w/o docker and w/ default resource setup."""
+    return x + y
 
-@mesos(cpus=1, mem=128)
+
+@mesos(mem=512, cpus=1, image='bdas-master-3:5000/satyr')
 def mul(x, y):
-    return x*y
+    """Run stuff on mesos w/ docker and specified resources."""
+    return x * y
 
 
 with set_options(get=get):
-    x = inc(66)
-    y = mul(66, 77)
-    print add(y, x).compute()
+    """This context ensures that both @do and @mesos will run on mesos."""
+    one = inc(0)
+    alot = add(one, 789)
+    gigalot = mul(alot, inc(alot))
+    print(mul(alot, gigalot).compute())
 ```
-
