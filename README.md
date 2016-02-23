@@ -28,8 +28,3 @@ with set_options(get=get):
     print add(y, x).compute()
 ```
 
-# Build with Wercker-CLI
-
-```bash
-wercker build --working-dir ~/.wercker
-```
