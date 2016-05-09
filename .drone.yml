@@ -45,7 +45,4 @@ build:
       - MESOS_MASTER=zk://127.0.0.1:2181/mesos
       - ZOOKEEPER_HOST=127.0.0.1:2181
     commands:
-      - pip install -e .
-      - pip install pytest pytest-mock
-      - sleep 123123123123
       - python setup.py test
