@@ -1,29 +1,35 @@
+from operator import add
+
 import pytest
-from satyr.config import Config
+from dask.context import set_options
+from dask_mesos.mesos import get
+
+inc = lambda x: x + 1
 
 
-def test_get_satyr(monkeypatch):
-    def mock_create_satyr(config):
-        assert isinstance(config, Config)
-        return 'SATYR'
-
-    monkeypatch.setattr('satyr.multiprocess.create_satyr', mock_create_satyr)
-    from dask_mesos.mesos import get_satyr
-    assert get_satyr() == 'SATYR'
-
-
-test_mesos_settings = [
-    ({'cpus': 0, 'mem': 1, 'disk': 2}, {'resources': {
-     'cpus': 0, 'mem': 1, 'disk': 2}, 'image': None}),
-    ({'cpu': -1, 'cpus': 0, 'mem': 1},
-     {'resources': {'cpus': 0, 'mem': 1}, 'image': None}),
-    ({'cpus': 0, 'mem': 1, 'image': 'xxx:1.1'}, {
-     'resources': {'cpus': 0, 'mem': 1}, 'image': 'xxx:1.1'}),
-    ({'image': 'xxx:1.1'}, {'resources': {}, 'image': 'xxx:1.1'})
-]
+def test_get():
+    dsk = {'x': 1,
+           'y': 2,
+           'z': (inc, 'x'),
+           'w': (add, 'z', 'y')}
+    assert get(dsk, 'w') == 4
+    assert get(dsk, ['w', 'z']) == (4, 2)
 
 
-@pytest.mark.parametrize('input,result', test_mesos_settings)
-def test_create_satyr_compatible_config_no_image(input, result):
-    from dask_mesos.mesos import create_satyr_compatible_config
-    assert create_satyr_compatible_config(input) == result
+def test_nested_get():
+    dsk = {'x': 1, 'y': 2, 'a': (add, 'x', 'y'), 'b': (sum, ['x', 'y'])}
+    assert get(dsk, ['a', 'b']) == (3, 3)
+
+
+def test_get_without_computation():
+    dsk = {'x': 1}
+    assert get(dsk, 'x') == 1
+
+
+def test_exceptions_rise_to_top():
+    def bad(x):
+        raise ValueError()
+
+    dsk = {'x': 1, 'y': (bad, 'x')}
+    with pytest.raises(ValueError):
+        get(dsk, 'y')

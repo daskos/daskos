@@ -1,69 +1,87 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+from uuid import uuid4
+
 from dask.async import get_async
-from dask.compatibility import Queue
 from dask.context import _globals
-from dask.multiprocessing import _process_get_id
-from satyr.config import Config
-from satyr.multiprocess import create_satyr
+from dask.optimize import cull, fuse
+from kazoo.client import KazooClient
+from satyr.apis.multiprocessing import Pool, Queue
+from toolz import curry, partial, pipe
 
 
-def get_satyr():
-    if 'satyr' not in _globals:
-        config = Config(
-            {'permanent': True, 'filter_refuse_seconds': 1, 'max_tasks': 10})
+def get(dsk, keys, optimizations=[], num_workers=None,
+        docker='lensa/dask.mesos:latest',
+        zk=os.getenv('ZOOKEEPER_HOST', '127.0.0.1:2181'),
+        mesos=os.getenv('MESOS_MASTER', '127.0.0.1:5050'),
+        **kwargs):
+    """Mesos get function appropriate for Bags
 
-        # TODO question: is it really ok to store this in _globals?
-        _globals['satyr'] = create_satyr(config)
+    Parameters
+    ----------
 
-    return _globals['satyr']
+    dsk: dict
+        dask graph
+    keys: object or list
+        Desired results from graph
+    optimizations: list of functions
+        optimizations to perform on graph before execution
+    num_workers: int
+        Number of worker processes (defaults to number of cores)
+    docker: string
+        Default docker image name to run the dask in
+    zk: string
+        Zookeeper host and port the distributed Queue should connect to
+    mesos: string
+        Mesos Master hostname and port the Satyr framework should connect to
+    """
+    pool, kazoo = _globals['pool'], _globals['kazoo']
 
+    if pool is None:
+        pool = Pool(name='dask-pool', master=mesos, processes=num_workers)
+        pool.start()
+        cleanup_pool = True
+    else:
+        cleanup_pool = False
 
-def create_satyr_compatible_config(mesos_settings):
-    return {'resources': {name: val for name, val in mesos_settings.items()
-                          if name in ['cpus', 'mem', 'disk', 'ports']},
-            'image': mesos_settings.get('image', None)}
+    if kazoo is None:
+        kazoo = KazooClient(hosts=zk)
+        kazoo.start()
+        cleanup_kazoo = True
+    else:
+        cleanup_kazoo = False
 
+    # Optimize Dask
+    dsk2 = fuse(dsk, keys)
+    dsk3 = pipe(dsk2, partial(cull, keys=keys), *optimizations)
 
-def apply_async_wrapper(fn, *args, **kwargs):
-    """We only send the pickled function defined by the user to
-    the Mesos executor; so we have to run the async.execute_task
-    beforehand since it's not quiet pickle-able w/ all it's
-    arguments. (Especially the queue.)"""
+    def apply_async(execute_task, args):
+        try:
+            func = args[1][0]
 
-    def wrap(func, *args, **kwargs):
-        if hasattr(func, 'mesos_settings'):
-            kwargs.update(create_satyr_compatible_config(func.mesos_settings))
+            # extract satyr params from function property
+            params = func.satyr
+            del func.satyr
 
-        return get_satyr().apply_async(func, args=args, kwargs=kwargs)
+            # recreate task definition from func and its args
+            args[1] = (func,) + args[1][1:]
+        except AttributeError:
+            params = {}
+        finally:
+            if 'docker' not in params:
+                params['docker'] = docker
 
-    def resolve_arguments(values=(), asyncs={}):
-        def resolver(asy, v):
-            return asy[v].get() if v in asy else v
-        return tuple([resolver(asyncs, val) for val in values])
+        return pool.apply_async(execute_task, args, **params)
 
-    func_tuple = kwargs['args'][1]
-    kwargs['args'][1] = wrap(
-        func_tuple[0], *resolve_arguments(func_tuple[1:], kwargs['args'][2]))
-    fn(*kwargs['args'])
+    try:
+        # Run
+        queue = Queue(kazoo, str(uuid4()))
+        result = get_async(apply_async, 1e4, dsk3, keys, queue=queue, **kwargs)
+    finally:
+        if cleanup_kazoo:
+            kazoo.stop()
+        if cleanup_pool:
+            pool.stop()
 
-
-def get(dsk, keys, **kwargs):
-    def resolve(res):
-        """We'll get the final result here as an AsyncResult
-        which we have to resolve to be compatible w/ other
-        dask schedulers. (We shouldn't really force users to
-        call .get() after .calculate().) But note that we
-        could look for a better resolution than this."""
-        return res.get() if not hasattr(res, '__iter__') else (resolve(res[0]),)
-
-    satyr = get_satyr()
-    r = resolve(get_async(apply_async_wrapper, satyr.sched.config['max_tasks'],
-                          dsk, keys, queue=Queue(), get_id=_process_get_id,
-                          **kwargs))
-
-    # TODO force satyr devs to implement a better way to kill
-    #      their shitty scheduler from the outside :)
-    satyr.sched.driver_states['force_shutdown'] = True
-
-    return r
+    return result

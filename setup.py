@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# coding: utf-8
+
 from __future__ import absolute_import, division, print_function
 
 from os.path import exists
@@ -6,20 +8,17 @@ from os.path import exists
 from setuptools import setup
 
 setup(name='dask.mesos',
-      version='0.1',
+      version='0.1.2',
       description='A Mesos executor backend for Dask',
-      long_description=(open('README.rst').read() if exists('README.rst')
+      long_description=(open('README.md').read() if exists('README.md')
                         else ''),
       url='http://github.com/lensacom/dask.mesos',
-      maintainer='Zoltan Nagy',
-      maintainer_email='zoltan.nagy@lensa.com',
-      license='BSD',
+      maintainer='Krisztián Szűcs',
+      maintainer_email='krisztian.szucs@lensa.com',
+      license='Apache License, Version 2.0',
       keywords='mesos dask multiprocessing',
-
       packages=['dask_mesos'],
-      install_requires=['dask', 'satyr', 'toolz'],
+      install_requires=['toolz', 'dask', 'satyr'],
       setup_requires=['pytest-runner'],
       tests_require=['pytest'],
-      dependency_links=[
-          'git+https://github.com/lensacom/satyr.git#egg=satyr-0.1'],
       zip_safe=False)

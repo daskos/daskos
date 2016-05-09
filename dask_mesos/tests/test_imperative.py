@@ -1,15 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
-from dask.imperative import do
+from dask import delayed
 from dask_mesos.imperative import mesos
+from dask_mesos.mesos import get
+from satyr.proxies.messages import Cpus, Disk, Mem
 
 
-def add(x, y):
-    return x + y
+def test_mesos_is_delayed():
+    def add(x, y):
+        return x + y
 
-
-def test_mesos_is_do():
-    add1 = do(add)
+    add1 = delayed(add)
     add2 = mesos(add)
 
     assert add1.__name__ == add2.__name__
@@ -17,8 +18,33 @@ def test_mesos_is_do():
 
 
 def test_mesos_attributes():
-    add1 = mesos(add, cpus=1, mem=128, disk=256)
-    add2 = mesos(add, docker='testimg', cpus=3)
+    def mul(x, y):
+        return x * y
 
-    assert add1.mesos_settings == {'cpus': 1, 'mem': 128, 'disk': 256}
-    assert add2.mesos_settings == {'cpus': 3, 'docker': 'testimg'}
+    mul1 = mesos(mul, cpus=1, mem=128, disk=256)
+
+    @mesos(cpus=3, docker='testimg')
+    def mul2(x, y):
+        return x * y
+
+    expected1 = {'resources': [Cpus(1), Mem(128), Disk(256)]}
+    expected2 = {'resources': [Cpus(3), Mem(64), Disk(0)],
+                 'docker': 'testimg'}
+    assert mul1.satyr == expected1
+    assert mul2.satyr == expected2
+
+
+def test_mesos_compute():
+    @mesos(cpus=0.1)
+    def add(x, y):
+        return x + y
+
+    @mesos(cpus=0.2)
+    def mul(x, y):
+        return x * y
+
+    s = add(1, 2)
+    m = mul(s, 10)
+    z = add(s, m)
+
+    assert z.compute(get=get) == 33
