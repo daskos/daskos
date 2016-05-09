@@ -1,6 +1,13 @@
 [![Build Status](http://52.0.47.203:8000/api/badges/lensacom/dask.mesos/status.svg)](http://52.0.47.203:8000/lensacom/dask.mesos)
 
-Run dask workflows on your Mesos cluster.
+[Apache Mesos](http://mesos.apache.org/) backend for [Dask](https://github.com/dask/dask) scheduling library. 
+Run distributed python dask workflows on your Mesos cluster.
+
+## Notable Features
+
+ - distributively run tasks in docker container
+ - specify resource requirements per task
+ - bin packing for optimized resource utilization
 
 ## Installation
 
