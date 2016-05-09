@@ -2,12 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import os
 from uuid import uuid4
-from toolz import curry, pipe, partial
-from dask.optimize import fuse, cull
+
 from dask.async import get_async
 from dask.context import _globals
+from dask.optimize import cull, fuse
 from kazoo.client import KazooClient
 from satyr.apis.multiprocessing import Pool, Queue
+from toolz import curry, partial, pipe
 
 
 def get(dsk, keys, optimizations=[], num_workers=None,

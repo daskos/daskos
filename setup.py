@@ -4,8 +4,8 @@
 from __future__ import absolute_import, division, print_function
 
 from os.path import exists
-from setuptools import setup
 
+from setuptools import setup
 
 setup(name='dask.mesos',
       version='0.1',

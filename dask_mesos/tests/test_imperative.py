@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 from dask import delayed
-from dask_mesos.mesos import get
 from dask_mesos.imperative import mesos
-from satyr.proxies.messages import Cpus, Mem, Disk
+from dask_mesos.mesos import get
+from satyr.proxies.messages import Cpus, Disk, Mem
 
 
 def test_mesos_is_delayed():

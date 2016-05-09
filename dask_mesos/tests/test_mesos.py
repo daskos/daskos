@@ -1,10 +1,8 @@
-import pytest
-
 from operator import add
+
+import pytest
 from dask.context import set_options
-
 from dask_mesos.mesos import get
-
 
 inc = lambda x: x + 1
 
