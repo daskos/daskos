@@ -51,7 +51,6 @@ with set_options(get=get):
     result = gigalot.compute()  # or gigalot.compute(get=get)
 ```
 
-Or check [example.py](example.py) for a docker only example.
 
 ## Configuring dask.mesos Tasks
 
