@@ -2,7 +2,7 @@
 
 Run dask workflows on your Mesos cluster.
 
-# Installation
+## Installation
 
 **Prerequisits:** [satyr](https://github.com/lensacom/satyr), [dask](https://github.com/dask/dask.git), [toolz](https://pypi.python.org/pypi/toolz). All of them should be installed w/ the following commands:
 
@@ -13,13 +13,7 @@ Configuration:
 - `ZOOKEEPER_HOST=127.0.0.1:2181`
 
 
-```bash
-git clone git@github.com:lensacom/dask.mesos.git
-cd dask.mesos
-pip install .
-```
-
-# Example
+## Example
 
 ```python
 from __future__ import absolute_import, division, print_function
@@ -52,7 +46,7 @@ with set_options(get=get):
 
 Or check [example.py](example.py) for a docker only example.
 
-# Configuring dask.mesos tasks
+## Configuring dask.mesos Tasks
 
 You can configure your mesos tasks in your decorator, currently the following options are available:
 
