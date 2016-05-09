@@ -18,35 +18,29 @@ pip install .
 from __future__ import absolute_import, division, print_function
 
 from dask import set_options
-from dask.imperative import do
 from dask_mesos.imperative import mesos
 from dask_mesos.mesos import get
 
 
-@mesos(mem=512, cpus=1)
-def inc(x):
-    """Run stuff on mesos w/o docker but w/ resources set."""
-    return x + 1
-
-
-@do
+@mesos(cpus=0.1, mem=64)
 def add(x, y):
-    """Run stuff on mesos w/o docker and w/ default resource setup."""
+    """Run add on mesos with specified resources"""
     return x + y
 
 
-@mesos(mem=512, cpus=1, image='bdas-master-3:5000/satyr')
+@mesos(cpus=0.3, mem=128, image='lensa/dask.mesos')
 def mul(x, y):
-    """Run stuff on mesos w/ docker and specified resources."""
+    """Run mul on mesos in specified docker image"""
     return x * y
 
 
 with set_options(get=get):
-    """This context ensures that both @do and @mesos will run on mesos."""
-    one = inc(0)
-    alot = add(one, 789)
-    gigalot = mul(alot, inc(alot))
-    print(mul(alot, gigalot).compute())
+    """This context ensures that decorated functions will run on mesos."""
+    a, b = 23, 89
+    alot = add(a, b)
+    gigalot = mul(alot, add(10, 2))
+
+    result = gigalot.compute()  # or gigalot.compute(get=get)
 ```
 
 Or check [example.py](example.py) for a docker only example.
@@ -55,8 +49,9 @@ Or check [example.py](example.py) for a docker only example.
 
 You can configure your mesos tasks in your decorator, currently the following options are available:
 
-* **mem**: Memory in MB to reserver for the task.
 * **cpus**: The amount of cpus to use for the task.
+* **mem**: Memory in MB to reserver for the task.
+* **disk**: The amount of disk to use for the task.
 * **image**: A docker image name. If not set, mesos containerizer will be used.
 
 Both mem and cpus are defaults to some low values set in _satyr_ so you're encouraged to override them here. More options like constraints, other resources are on the way.

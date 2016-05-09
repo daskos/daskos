@@ -1,8 +1,8 @@
-recursive-include dask *.py
+recursive-include dask.mesos *.py
 recursive-include docs *.rst
 
 include setup.py
-include README.rst
+include README.md
 include LICENSE.txt
 include MANIFEST.in
 

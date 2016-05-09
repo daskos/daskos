@@ -1,4 +1,4 @@
-FROM bdas-master-3:5000/satyr
+FROM lensa/satyr:latest
 
 ADD . /dask.mesos
 WORKDIR /dask.mesos
