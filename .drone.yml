@@ -46,3 +46,25 @@ build:
       - ZOOKEEPER_HOST=127.0.0.1:2181
     commands:
       - python setup.py test
+
+
+publish:
+  pypi:
+    repository: https://pypi.python.org/pypi
+    username: $$PYPI_USERNAME
+    password: $$PYPI_PASSWORD
+    distributions:
+      - sdist
+    when:
+      event: [tag]
+  docker:
+    username: $$DOCKERHUB_USERNAME
+    password: $$DOCKERHUB_PASSWORD
+    email: $$DOCKERHUB_EMAIL
+    repo: lensa/dask.mesos
+    file: Dockerfile
+    tag:
+      - $$TAG
+      - latest
+    when:
+      event: [tag]

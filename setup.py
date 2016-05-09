@@ -8,7 +8,7 @@ from os.path import exists
 from setuptools import setup
 
 setup(name='dask.mesos',
-      version='0.1',
+      version='0.1.2',
       description='A Mesos executor backend for Dask',
       long_description=(open('README.md').read() if exists('README.md')
                         else ''),
