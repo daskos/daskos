@@ -9,7 +9,7 @@ from setuptools import setup
 
 setup(name='dask.mesos',
       version='0.1.2',
-      description='A Mesos executor backend for Dask',
+      description='Apache Mesos backend for Dask scheduling library',
       long_description=(open('README.md').read() if exists('README.md')
                         else ''),
       url='http://github.com/lensacom/dask.mesos',
