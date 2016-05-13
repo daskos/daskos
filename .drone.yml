@@ -57,6 +57,7 @@ publish:
       - sdist
     when:
       event: [tag]
+
   docker:
     username: $$DOCKERHUB_USERNAME
     password: $$DOCKERHUB_PASSWORD
@@ -68,3 +69,14 @@ publish:
       - latest
     when:
       event: [tag]
+
+  docker:
+    username: $$DOCKERHUB_USERNAME
+    password: $$DOCKERHUB_PASSWORD
+    email: $$DOCKERHUB_EMAIL
+    repo: lensa/dask.mesos
+    file: Dockerfile
+    tag:
+      - master
+    when:
+      branch: master
