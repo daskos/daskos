@@ -18,7 +18,7 @@ setup(name='dask.mesos',
       license='Apache License, Version 2.0',
       keywords='mesos dask multiprocessing scheduling satyr',
       packages=['dask_mesos'],
-      install_requires=['toolz', 'dask', 'satyr'],
+      install_requires=['toolz', 'dask>=0.9.0', 'satyr>=0.1.4'],
       setup_requires=['pytest-runner'],
       tests_require=['pytest'],
       zip_safe=False)

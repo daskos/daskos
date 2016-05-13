@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+from copy import copy
 from uuid import uuid4
 
 from dask.async import get_async
@@ -11,8 +12,21 @@ from satyr.apis.multiprocessing import Pool, Queue
 from toolz import curry, partial, pipe
 
 
+class SatyrPack(object):
+
+    def __init__(self, fn, params=None):
+        self.fn = fn
+        self.params = params
+
+    def __call__(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
+
+    def __getstate__(self):
+        return {'fn': self.fn}
+
+
 def get(dsk, keys, optimizations=[], num_workers=None,
-        docker='lensa/dask.mesos:latest',
+        docker='lensa/dask.mesos',
         zk=os.getenv('ZOOKEEPER_HOST', '127.0.0.1:2181'),
         mesos=os.getenv('MESOS_MASTER', '127.0.0.1:5050'),
         **kwargs):
@@ -53,24 +67,18 @@ def get(dsk, keys, optimizations=[], num_workers=None,
         cleanup_kazoo = False
 
     # Optimize Dask
-    dsk2 = fuse(dsk, keys)
-    dsk3 = pipe(dsk2, partial(cull, keys=keys), *optimizations)
+    dsk2, dependencies = cull(dsk, keys)
+    dsk3, dependencies = fuse(dsk2, keys, dependencies)
+    dsk4 = pipe(dsk3, *optimizations)
 
     def apply_async(execute_task, args):
-        try:
-            func = args[1][0]
+        key = args[0]
+        func = args[1][0]
+        params = func.params if isinstance(func, SatyrPack) else {}
 
-            # extract satyr params from function property
-            params = func.satyr
-            del func.satyr
-
-            # recreate task definition from func and its args
-            args[1] = (func,) + args[1][1:]
-        except AttributeError:
-            params = {}
-        finally:
-            if 'docker' not in params:
-                params['docker'] = docker
+        params['id'] = key
+        if 'docker' not in params:
+            params['docker'] = docker
 
         return pool.apply_async(execute_task, args, **params)
 

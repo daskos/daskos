@@ -39,7 +39,7 @@ build:
       - docker build -t lensa/dask.mesos .
 
   test:
-    image: lensa/satyr:latest
+    image: lensa/dask.mesos
     net: host
     environment:
       - MESOS_MASTER=zk://127.0.0.1:2181/mesos
