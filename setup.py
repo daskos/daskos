@@ -8,7 +8,7 @@ from setuptools import setup
 
 
 setup(name='dask.mesos',
-      version='0.1.3',
+      version='0.1.4',
       description='Apache Mesos backend for Dask scheduling library',
       long_description=(open('README.md').read() if exists('README.md')
                         else ''),
