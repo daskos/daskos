@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import time
 from dask.delayed import delayed, DelayedLeaf
 from dask_mesos import get, mesos
 from dask_mesos.satyr import SatyrPack
@@ -43,14 +42,12 @@ def test_mesos_attributes():
 
 
 def test_mesos_compute():
-    @mesos(cpus=0.1)
+    @mesos(cpus=0.1, mem=128)
     def add(x, y):
-        time.sleep(10)
         return x + y
 
-    @mesos(cpus=0.2)
+    @mesos(cpus=0.2, mem=128)
     def mul(x, y):
-        time.sleep(5)
         return x * y
 
     s = add(1, 2)
@@ -58,3 +55,4 @@ def test_mesos_compute():
     z = add(s, m)
 
     assert z.compute(get=get) == 33
+    assert mul(s, z).compute(get=get) == 99
