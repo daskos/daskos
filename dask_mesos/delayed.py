@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-from toolz import curry
 from dask import delayed
 from satyr.proxies.messages import Cpus, Disk, Mem
-from .satyr import SatyrPack
+from toolz import curry
+
+from .executor import SatyrPack
 
 
 @curry

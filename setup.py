@@ -4,11 +4,11 @@
 from __future__ import absolute_import, division, print_function
 
 from os.path import exists
+
 from setuptools import setup
 
-
 setup(name='dask.mesos',
-      version='0.1.4',
+      version='0.2.0',
       description='Apache Mesos backend for Dask scheduling library',
       long_description=(open('README.md').read() if exists('README.md')
                         else ''),

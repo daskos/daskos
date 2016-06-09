@@ -1,9 +1,17 @@
 from __future__ import absolute_import, division, print_function
 
-from dask.delayed import delayed, DelayedLeaf
-from dask_mesos import get, mesos
-from dask_mesos.satyr import SatyrPack
+import pytest
+from concurrent.futures import Future
+from dask.delayed import DelayedLeaf, delayed
+from dask_mesos.delayed import mesos
+from dask_mesos.executor import MesosExecutor, SatyrPack
 from satyr.proxies.messages import Cpus, Disk, Mem
+
+
+@pytest.yield_fixture
+def executor():
+    with MesosExecutor(name='test-get') as executor:
+        yield executor
 
 
 def test_mesos_is_delayed():
@@ -41,7 +49,7 @@ def test_mesos_attributes():
     assert mul2._data.params == expected2
 
 
-def test_mesos_compute():
+def test_delayed_compute(executor):
     @mesos(cpus=0.1, mem=128)
     def add(x, y):
         return x + y
@@ -54,5 +62,49 @@ def test_mesos_compute():
     m = mul(s, 10)
     z = add(s, m)
 
-    assert z.compute(get=get) == 33
-    assert mul(s, z).compute(get=get) == 99
+    assert z.compute(get=executor.get) == 33
+    assert mul(s, z).compute(get=executor.get) == 99
+
+
+def test_executor_async_compute(executor):
+    @mesos(cpus=0.1, mem=128)
+    def add(x, y):
+        return x + y
+
+    @mesos(cpus=0.2, mem=128)
+    def mul(x, y):
+        return x * y
+
+    s = add(1, 2)
+    m = mul(s, 10)
+    z = add(s, m)
+
+    f = executor.compute(z)
+    assert isinstance(f, Future)
+    assert f.result() == 33
+
+    fs = executor.compute([z, m, s])
+    assert isinstance(fs, list)
+    assert all([isinstance(r, Future) for r in fs])
+
+    assert [r.result() for r in fs] == [33, 30, 3]
+
+
+def test_executor_sync_compute(executor):
+    @mesos(cpus=0.1, mem=128)
+    def add(x, y):
+        return x + y
+
+    @mesos(cpus=0.2, mem=128)
+    def mul(x, y):
+        return x * y
+
+    s = add(1, 2)
+    m = mul(s, 10)
+    z = add(s, m)
+
+    f = executor.compute(z, sync=True)
+    assert f == 33
+
+    fs = executor.compute([z, m, s], sync=True)
+    assert fs == [33, 30, 3]

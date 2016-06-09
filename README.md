@@ -1,7 +1,7 @@
 [![Build Status](http://52.0.47.203:8000/api/badges/lensacom/dask.mesos/status.svg)](http://52.0.47.203:8000/lensacom/dask.mesos)
 [![Join the chat at https://gitter.im/lensacom/dask.mesos](https://badges.gitter.im/lensacom/dask.mesos.svg)](https://gitter.im/lensacom/dask.mesos?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[Apache Mesos](http://mesos.apache.org/) backend for [Dask](https://github.com/dask/dask) scheduling library. 
+[Apache Mesos](http://mesos.apache.org/) backend for [Dask](https://github.com/dask/dask) scheduling library.
 Run distributed python dask workflows on your Mesos cluster.
 
 ## Notable Features
@@ -26,9 +26,7 @@ Configuration:
 ```python
 from __future__ import absolute_import, division, print_function
 
-from dask import set_options
-from dask_mesos.imperative import mesos
-from dask_mesos.mesos import get
+from dask_mesos import mesos, MesosExecutor
 
 
 @mesos(cpus=0.1, mem=64)
@@ -43,13 +41,14 @@ def mul(x, y):
     return x * y
 
 
-with set_options(get=get):
-    """This context ensures that decorated functions will run on mesos."""
+with MesosExecutor(name='dask') as executor:
+    """This context handles Mesos scheduler's lifecycle"""
     a, b = 23, 89
     alot = add(a, b)
     gigalot = mul(alot, add(10, 2))
 
-    result = gigalot.compute()  # or gigalot.compute(get=get)
+    gigalot.compute(get=executor.get)  # (a + b) * (10 + 2)
+    executor.compute([alot, gigalot])  # list of futures
 ```
 
 
