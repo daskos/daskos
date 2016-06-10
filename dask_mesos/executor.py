@@ -27,6 +27,9 @@ class SatyrPack(object):
         self.fn = fn
         self.params = params
 
+    def __repr__(self):
+        return 'satyr-{}'.format(self.fn.__name__)
+
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
@@ -96,7 +99,7 @@ class MesosExecutor(MesosPoolExecutor):
         return result
 
 
-    def compute(self, args, sync=False):
+    def compute(self, args, sync=False, **kwargs):
         """ Compute dask collections on cluster
         Parameters
         ----------
@@ -145,7 +148,7 @@ class MesosExecutor(MesosPoolExecutor):
             for f, r in zip(futures, future.result()):
                 f.set_result(r)
 
-        result = self.threadpool.submit(compute, *args, get=self.get)
+        result = self.threadpool.submit(compute, *args, get=self.get, **kwargs)
         result.add_done_callback(setter)
 
         if sync:

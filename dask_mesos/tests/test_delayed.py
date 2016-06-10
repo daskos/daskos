@@ -50,7 +50,7 @@ def test_mesos_attributes():
 
 
 def test_delayed_compute(executor):
-    @mesos(cpus=0.1, mem=128)
+    @mesos(cpus=0.1, mem=256)
     def add(x, y):
         return x + y
 

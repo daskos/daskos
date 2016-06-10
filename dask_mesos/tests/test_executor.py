@@ -38,5 +38,6 @@ def test_exceptions_rise_to_top(executor):
         raise ValueError()
 
     dsk = {'x': 1, 'y': (bad, 'x')}
+
     with pytest.raises(ValueError):
         executor.get(dsk, 'y')
