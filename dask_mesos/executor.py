@@ -1,45 +1,51 @@
 from __future__ import absolute_import, division, print_function
 
-from satyr.apis.futures import MesosPoolExecutor
-
+import logging
 import os
-from copy import copy
 from uuid import uuid4
-from toolz import curry, partial, pipe, first
 
+from concurrent.futures import Future, ThreadPoolExecutor
 from dask import compute
-from dask.base import Base
 from dask.async import get_async
+from dask.base import Base
+from dask.context import _globals
 from dask.optimize import cull, fuse
-
 from kazoo.client import KazooClient
-from satyr.apis.multiprocessing import Pool, Queue
-
-from concurrent.futures import ThreadPoolExecutor, Future
-
-
-
-# TODO: default cache
-
-class SatyrPack(object):
-
-    def __init__(self, fn, params=None):
-        self.fn = fn
-        self.params = params
-
-    def __repr__(self):
-        return 'satyr-{}'.format(self.fn.__name__)
-
-    def __call__(self, *args, **kwargs):
-        return self.fn(*args, **kwargs)
-
-    def __getstate__(self):
-        return {'fn': self.fn}
+from satyr.apis.futures import MesosPoolExecutor
+from satyr.queue import Queue
+from toolz import first, merge
 
 
+def get(dsk, keys, **kwargs):
+    """Mesos implementation of dask.get
+    Parameters
+    ----------
+    dsk: dict
+        A dask dictionary specifying a workflow
+    keys: key or list of keys
+        Keys corresponding to desired data
+    Examples
+    --------
+    >>> dsk = {'x': 1, 'y': 2, 'z': (inc, 'x'), 'w': (add, 'z', 'y')}
+    >>> get(dsk, 'w')
+    4
+    >>> get(dsk, ['w', 'y'])
+    (4, 2)
+    """
+    executor = _globals['executor']
+
+    if executor is None:
+        with MesosExecutor(name='dask-mesos-get') as executor:
+            return executor.get(dsk, keys, **kwargs)
+    else:
+        return executor.get(dsk, keys, **kwargs)
+
+
+# # TODO: default cache
 class MesosExecutor(MesosPoolExecutor):
 
-    def __init__(self, num_workers=-1, zk=os.getenv('ZOOKEEPER_HOST', '127.0.0.1:2181'),
+    def __init__(self, num_workers=-1,
+                 zk=os.getenv('ZOOKEEPER_HOST', '127.0.0.1:2181'),
                  *args, **kwargs):
         self.zk = KazooClient(hosts=zk)
         super(MesosExecutor, self).__init__(*args, **kwargs)
@@ -55,15 +61,17 @@ class MesosExecutor(MesosPoolExecutor):
         self.threadpool.shutdown()
         self.zk.stop()
 
-    def get(self, dsk, keys, optimize_graph=True, docker='lensa/dask.mesos', **kwargs):
+    def get(self, dsk, keys, optimize_graph=True, docker='lensa/dask.mesos',
+            params={}, threaded=True, **kwargs):
         """ Compute dask graph
         Parameters
         ----------
         dsk: dict
         keys: object, or nested lists of objects
-        restrictions: dict (optional)
-            A mapping of {key: {set of worker hostnames}} that restricts where
-            jobs can take place
+        optimize_graph: bool
+        docker: string, default docker image for computations on mesos
+        params: dict, mesos options per dask key
+        threaded: bool, offload task without mesos parameters to threads
         Examples
         --------
         >>> from operator import add  # doctest: +SKIP
@@ -83,21 +91,23 @@ class MesosExecutor(MesosPoolExecutor):
 
         def apply_async(execute_task, args):
             key = args[0]
-            func = args[1][0]
-            params = func.params if isinstance(func, SatyrPack) else {}
 
-            params['id'] = key
-            if 'docker' not in params:
-                params['docker'] = docker
+            if threaded and key not in params:
+                logging.info('Task `{}` is calculating in threads'.format(key))
+                return self.threadpool.submit(execute_task, *args)
 
-            return self.submit(execute_task, args, **params)
+            options = params.get(key, {})
+            options['id'] = key
+            if 'docker' not in options:
+                options['docker'] = docker
+            logging.info('Task `{}` is calculating on mesos'.format(key))
+            return self.submit(execute_task, args, **options)
 
         # Run
         queue = Queue(self.zk, str(uuid4()))
         result = get_async(apply_async, 1e4, dsk3, keys, queue=queue, **kwargs)
 
         return result
-
 
     def compute(self, args, sync=False, **kwargs):
         """ Compute dask collections on cluster
@@ -129,6 +139,8 @@ class MesosExecutor(MesosPoolExecutor):
         --------
         Executor.get: Normal synchronous dask.get function
         """
+        from .delayed import MesosDelayed
+
         if isinstance(args, (list, tuple, set, frozenset)):
             singleton = False
         else:
@@ -136,7 +148,10 @@ class MesosExecutor(MesosPoolExecutor):
             singleton = True
 
         futures = []
+        params = []
         for arg in args:
+            if isinstance(arg, MesosDelayed):
+                params.append(arg.params)
             if isinstance(arg, Base):
                 f = Future()
                 f.set_running_or_notify_cancel()
@@ -148,12 +163,14 @@ class MesosExecutor(MesosPoolExecutor):
             for f, r in zip(futures, future.result()):
                 f.set_result(r)
 
-        result = self.threadpool.submit(compute, *args, get=self.get, **kwargs)
+        params = merge(*params)
+        result = self.threadpool.submit(compute, *args, get=self.get,
+                                        params=params, **kwargs)
         result.add_done_callback(setter)
 
         if sync:
             result.result()
-            futures = [f.result() for f in futures]
+            futures = [future.result() for future in futures]
 
         if singleton:
             return first(futures)

@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import cloudpickle
 from functools import partial
+
+import cloudpickle
 from dask.callbacks import Callback
 from kazoo.client import NoNodeError
 from kazoo.recipe.lock import Lock as ZkLock

@@ -1,16 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import pytest
-import logging
 from operator import add, mul
+
+import pytest
 from cloudpickle import loads
 from dask import get
 from dask.callbacks import Callback
 from dask_mesos.context import Lock, Persist
 from kazoo.client import NoNodeError
 from kazoo.recipe.lock import LockTimeout
-
 
 zookeeper_host = os.environ.get('ZOOKEEPER_HOST')
 
