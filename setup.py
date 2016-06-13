@@ -44,5 +44,5 @@ setup(name='dask.mesos',
       packages=['dask_mesos'],
       install_requires=['toolz', 'dask>=0.9.0', 'satyr>=0.2.0'],
       setup_requires=['pytest-runner'],
-      tests_require=['pytest', 'pytest-mock'],
+      tests_require=['pytest-mock', 'pytest'],
       zip_safe=False)
