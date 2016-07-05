@@ -18,9 +18,13 @@ def mul(x, y):
     return x * y
 
 add_params = {'docker': 'test1',
-              'resources': [Cpus(0.1), Mem(256), Disk(0)]}
+              'resources': [Cpus(0.1), Mem(256), Disk(0)],
+              'envs': {},
+              'uris': []}
 mul_params = {'docker': 'test2',
-              'resources': [Cpus(0.2), Mem(128), Disk(0)]}
+              'resources': [Cpus(0.2), Mem(128), Disk(0)],
+              'envs': {},
+              'uris': []}
 
 
 def test_mesos_is_delayed():

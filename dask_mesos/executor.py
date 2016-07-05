@@ -62,7 +62,7 @@ class MesosExecutor(MesosPoolExecutor):
         self.zk.stop()
 
     def get(self, dsk, keys, optimize_graph=True, docker='lensa/dask.mesos',
-            params={}, threaded=True, **kwargs):
+            params={}, threaded=True, **kwargs):  # should be mode instead: threaded / mesos / hybrid
         """ Compute dask graph
         Parameters
         ----------

@@ -29,8 +29,12 @@ def to_task_dasks_params(expr, **kwargs):
 
 
 @curry
-def mesos(obj, name=None, pure=True, cpus=1, mem=64, disk=0, **kwargs):
+def mesos(obj, name=None, pure=True, cpus=1, mem=64, disk=0,
+          docker='lensa/dask.mesos', envs={}, uris=[], **kwargs):
     kwargs['resources'] = [Cpus(cpus), Mem(mem), Disk(disk)]
+    kwargs['docker'] = docker
+    kwargs['envs'] = envs
+    kwargs['uris'] = uris
 
     if isinstance(obj, MesosDelayed):
         return obj
