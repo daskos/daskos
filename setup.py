@@ -31,7 +31,7 @@ class PyTest(TestCommand):
 
 
 setup(name='dask.mesos',
-      version='0.2.1',
+      version='0.2.2',
       description='Apache Mesos backend for Dask scheduling library',
       long_description=(open('README.md').read() if exists('README.md')
                         else ''),
