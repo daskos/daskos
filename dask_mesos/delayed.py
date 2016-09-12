@@ -30,7 +30,7 @@ def to_task_dasks_params(expr, **kwargs):
 
 @curry
 def mesos(obj, name=None, pure=True, cpus=1, mem=64, disk=0,
-          docker='lensa/dask.mesos', force_pull=False, envs={}, uris=[],
+          docker='dask.mesos', force_pull=False, envs={}, uris=[],
           **kwargs):
     kwargs['resources'] = [Cpus(cpus), Mem(mem), Disk(disk)]
     kwargs['docker'] = docker
