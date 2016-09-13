@@ -27,7 +27,7 @@ services:
     network_mode: host
     image: lensa/mesos-slave:1.0.11.0.1-2.0.93.ubuntu1404
     environment:
-      - MESOS_LOGGING_LEVEL=ERROR
+      #- MESOS_LOGGING_LEVEL=ERROR
       - MESOS_IP=127.0.0.1
       - MESOS_MASTER=zk://127.0.0.1:2181/mesos
       - MESOS_CONTAINERIZERS=mesos
@@ -53,7 +53,7 @@ services:
     network_mode: host
     image: lensa/mesos-slave:1.0.11.0.1-2.0.93.ubuntu1404
     environment:
-      - MESOS_LOGGING_LEVEL=ERROR
+      #- MESOS_LOGGING_LEVEL=ERROR
       - MESOS_IP=127.0.0.1
       - MESOS_MASTER=zk://127.0.0.1:2181/mesos
       - MESOS_CONTAINERIZERS=mesos
@@ -85,17 +85,20 @@ pipeline:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
       - docker build -t lensa/dask.mesos .
-      - docker tag lensa/dask.mesos localhost:5000/dask.mesos
-      - docker push localhost:5000/dask.mesos
+      - docker tag lensa/dask.mesos localhost:5000/lensa/dask.mesos
+      - docker push localhost:5000/lensa/dask.mesos
 
   test:
-    image: lensa/satyr
+    image: lensa/dask.mesos
     network_mode: host
     environment:
       - LIBPROCESS_IP=127.0.0.1
       - MESOS_MASTER=zk://127.0.0.1:2181/mesos
       - ZOOKEEPER_HOST=127.0.0.1:2181
     commands:
+      - pip install -U -e .
+      - pip install pytest pytest-mock
+      - sleep 12324351245234
       - python setup.py test
 
 
