@@ -40,6 +40,17 @@ from distributed.http.scheduler import HTTPScheduler
 #         sleep(0.001)
 
 
+class DistributedExecutor(PythonExecutor):
+
+    proto = mesos_pb2.ExecutorInfo(
+        labels=mesos_pb2.Labels(
+            labels=[mesos_pb2.Label(key='distributed')]))
+
+    def __init__(self, docker='lensa/dask.mesos', *args, **kwargs):
+        super(DistributedExecutor, self).__init__(docker=docker, *args, **kwargs)
+        self.command.value = 'python -m dask_mesos.distributed.executor'
+
+
 class MesosCluster(SchedulerDriver):
 
     def __init__(self, n_workers=None, threads_per_worker=None,

@@ -3,77 +3,68 @@ from __future__ import absolute_import, division, print_function
 import logging
 import multiprocessing
 import sys
-import threading
+from time import sleep
+from threading import Thread
 import traceback
 from functools import partial
 
+from tornado.ioloop import IOLoop
+from tornado.iostream import StreamClosedError
+from tornado import gen
+
 from satyr.interface import Executor
 from satyr.messages import PythonTaskStatus
-from satyr.executor import ExecutorDriver, ThreadExecutor
-
-### 
-# 1. send task_running status update
-# 2. start task (nanny) with the executor's ioloop
-# 3. if any error occurs send task_failed
-# 4. on_kill -> call nanny's _close coroutine and send task_finished or task_killed status update
-#
-# def run(self, driver, task):
-#     status = partial(PythonTaskStatus, task_id=task.id)
-#     driver.update(status(state='TASK_RUNNING'))
-#     logging.info('Sent TASK_RUNNING status update')
-
-#     try:
-#         logging.info('Executing task...')
-#         result = task()
-#     except Exception as e:
-#         exc_type, exc_value, exc_traceback = sys.exc_info()
-#         tb = ''.join(traceback.format_tb(exc_traceback))
-#         logging.exception('Task errored with {}'.format(e))
-#         driver.update(status(state='TASK_FAILED',
-#                              data=(e, tb),
-#                              message=e.message))
-#         logging.info('Sent TASK_RUNNING status update')
-#     else:
-#         driver.update(status(state='TASK_FINISHED', data=result))
-#         logging.info('Sent TASK_FINISHED status update')
-#     finally:
-#         del self.tasks[task.id]
-#         if self.is_idle():  # no more tasks left
-#             logging.info('Executor stops due to no more executing '
-#                          'tasks left')
-#             driver.stop()
+from satyr.executor import ExecutorDriver
 
 
-class TornadoExecutor(ThreadExecutor):
+class TornadoExecutor(Executor):
 
     def __init__(self):
         self.loop = IOLoop()
-        self.tasks = {}
+        if not self.loop._running:
+            self._thread = Thread(target=self.loop.start)
+            self._thread.daemon = True
+            self._thread.start()
+            while not self.loop._running:
+                sleep(0.001)
 
-    def is_idle(self):
-        return not len(self.tasks)
+        self.workers = {}
 
     def on_launch(self, driver, task):
-        # TODO start task in the loop instead of a thread
-        thread = threading.Thread(target=self.run, args=(driver, task))
-        self.tasks[task.id] = thread  # track tasks runned by this executor
-        thread.start()
+        # meyba detach to a thread
+        status = partial(PythonTaskStatus, task_id=task.id)
+        driver.update(status(state='TASK_RUNNING'))
+
+        try:
+            logging.info('Starting worker {}'.format(task.id))
+            fn, args, kwargs = task.data
+            worker = fn(loop=self.loop)
+            self.workers[task.id] = worker
+            self.loop.add_callback(worker._start)
+        except Exception as e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            tb = ''.join(traceback.format_tb(exc_traceback))
+            logging.exception('Worker errored with {}'.format(e))
+            driver.update(status(state='TASK_FAILED',
+                                 data=(e, tb),
+                                 message=e.message))
 
     def on_kill(self, driver, task_id):
-        self.tasks[task_id].stop() # nanny._close
-        del self.tasks[task_id]
+        worker = self.workers.pop(task_id)
+        self.loop.add_callback(worker._close)
 
-        if self.is_idle():  # no more tasks left
+        if not len(self.workers):
             logging.info('Executor stops due to no more executing '
                          'tasks left')
             driver.stop()
 
-
     def on_shutdown(self, driver):
+        with ignoring(gen.TimeoutError, StreamClosedError, OSError):
+            yield All([w._close() for w in self.workers.values()])
         driver.stop()
 
 
 if __name__ == '__main__':
-    status = ExecutorDriver(ThreadExecutor()).run()
+    status = ExecutorDriver(TornadoExecutor()).run()
     code = 0 if status == mesos_pb2.DRIVER_STOPPED else 1
     sys.exit(code)
