@@ -37,7 +37,7 @@ class TornadoExecutor(Executor):
 
         try:
             logging.info('Starting worker {}'.format(task.id))
-            fn, args, kwargs = task.data
+            fn, args, kwargs = task()
             worker = fn(loop=self.loop)
             self.workers[task.id] = worker
             self.loop.add_callback(worker._start)

@@ -25,29 +25,18 @@ from distributed import Nanny, Worker, Scheduler as DaskScheduler
 from distributed.utils import ignoring, sync, All
 from distributed.http.scheduler import HTTPScheduler
 
-
-# NON FUNCTIONAL AT ALL RIGHT NOW
-#python -m dask_mesos.distributed.mesos
-
-
-### start loop in the background
-# self.loop = loop or IOLoop()
-# if not self.loop._running:
-#     self._thread = Thread(target=self.loop.start)
-#     self._thread.daemon = True
-#     self._thread.start()
-#     while not self.loop._running:
-#         sleep(0.001)
+from mesos.interface import mesos_pb2
+from satyr.proxies.messages import TaskID
 
 
-class DistributedExecutor(PythonExecutor):
+class DaskExecutor(PythonExecutor):
 
     proto = mesos_pb2.ExecutorInfo(
         labels=mesos_pb2.Labels(
-            labels=[mesos_pb2.Label(key='distributed')]))
+            labels=[mesos_pb2.Label(key='dask')]))
 
     def __init__(self, docker='lensa/dask.mesos', *args, **kwargs):
-        super(DistributedExecutor, self).__init__(docker=docker, *args, **kwargs)
+        super(DaskExecutor, self).__init__(docker=docker, *args, **kwargs)
         self.command.value = 'python -m dask_mesos.distributed.executor'
 
 
@@ -55,10 +44,24 @@ class MesosCluster(SchedulerDriver):
 
     def __init__(self, n_workers=None, threads_per_worker=None,
                  loop=None, scheduler_host='127.0.0.1', scheduler_port=8786,
-                 services={'http': HTTPScheduler}, *args, **kwargs):
+                 services={'http': HTTPScheduler}, silence_logs=logging.CRITICAL,
+                 *args, **kwargs):
+        if silence_logs:
+            for l in ['distributed.scheduler',
+                      'distributed.worker',
+                      'distributed.core',
+                      'distributed.nanny']:
+                logging.getLogger(l).setLevel(silence_logs)
         self.port = scheduler_port
         self.host = scheduler_host
         self.loop = loop or IOLoop()
+        if not self.loop._running:
+            self._thread = Thread(target=self.loop.start)
+            self._thread.daemon = True
+            self._thread.start()
+            while not self.loop._running:
+                sleep(0.001)
+
         self.dask = DaskScheduler(loop=self.loop, ip=self.host,
                                   services=services)
 
@@ -94,18 +97,12 @@ class MesosCluster(SchedulerDriver):
         -------
         The created Worker or Nanny object.  Can be discarded.
         """
-        def start_worker(W):
-            loop = IOLoop()
-            w = W(loop=loop)
-            w.start()
-            loop.start()
-
-        N = partial(Nanny, self.host, self.port, **kwargs)
-        executor = PythonExecutor(docker='lensa/dask.mesos')
-        task = PythonTask(name='dask-worker', fn=start_worker, args=[N],
-                          executor=executor, resources=[Cpus(0.5), Mem(256)])
+        executor = DaskExecutor(docker='lensa/dask.mesos')
+        task = PythonTask(name='dask-worker', fn=partial(Nanny, self.host, self.port, **kwargs),
+                          executor=executor, resources=[Cpus(0.2), Mem(128)])
         self.mesos.submit(task)
-        self.workers.append(task)
+        self.workers.append(task.id.value)
+        return task.id.value
 
     def stop_worker(self, w):
         """ Stop a running worker
@@ -115,11 +112,11 @@ class MesosCluster(SchedulerDriver):
         >>> w = c.start_worker(ncores=2)  # doctest: +SKIP
         >>> c.stop_worker(w)  # doctest: +SKIP
         """
-        # kill mesos task
+        self.kill(TaskID(value=w))
         self.workers.remove(w)
 
-    def __del__(self):
-        self.stop()
+    # def __del__(self):
+    #    self.stop()
 
     @property
     def scheduler_address(self):
@@ -127,9 +124,17 @@ class MesosCluster(SchedulerDriver):
 
 
 if __name__ == '__main__':
-
-    with MesosCluster(name='e') as m:
-        m.start_worker()
+    import time
+    with MesosCluster(name='e', silence_logs=logging.INFO) as m:
+        w1 = m.start_worker()
+        time.sleep(5)
+        w2 = m.start_worker()
+        time.sleep(5)
+        w3 = m.start_worker()
+        time.sleep(5)
+        m.stop_worker(w3)
+        time.sleep(5)
+        m.stop_worker(w2)
         m.mesos.wait()
  
 
