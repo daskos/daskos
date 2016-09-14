@@ -4,10 +4,6 @@ import os
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('satyr.scheduler')
-logger.setLevel(logging.DEBUG)
-
 from functools import partial
 from threading import Thread
 from time import sleep
@@ -19,7 +15,7 @@ from tornado import gen
 from distributed.deploy import LocalCluster
 from satyr.scheduler import SchedulerDriver
 from satyr import QueueScheduler, PythonTask
-from satyr.messages import PythonExecutor, Cpus, Mem
+from satyr.messages import PythonExecutor, Cpus, Mem, Disk
 
 from distributed import Nanny, Worker, Scheduler as DaskScheduler
 from distributed.utils import ignoring, sync, All
@@ -42,10 +38,11 @@ class DaskExecutor(PythonExecutor):
 
 class MesosCluster(SchedulerDriver):
 
-    def __init__(self, n_workers=None, threads_per_worker=None,
-                 loop=None, scheduler_host='127.0.0.1', scheduler_port=8786,
-                 services={'http': HTTPScheduler}, silence_logs=logging.CRITICAL,
-                 *args, **kwargs):
+    def __init__(self, n_workers=0, threads_per_worker=None, loop=None,
+                 name='dask-distributed', master=os.getenv('MESOS_MASTER'),
+                 worker_cpus=1, worker_memory=512, worker_disk=0, docker='lensa/dask.mesos',
+                 scheduler_host='127.0.0.1', scheduler_port=8786,
+                 services={'http': HTTPScheduler}, silence_logs=logging.CRITICAL):
         if silence_logs:
             for l in ['distributed.scheduler',
                       'distributed.worker',
@@ -62,24 +59,33 @@ class MesosCluster(SchedulerDriver):
             while not self.loop._running:
                 sleep(0.001)
 
-        self.dask = DaskScheduler(loop=self.loop, ip=self.host,
-                                  services=services)
+        self.n_workers = n_workers
+        self.worker_cpus = worker_cpus
+        self.worker_memory = worker_memory
+        self.worker_disk = worker_disk
+        self.docker = docker
 
+        self.scheduler = DaskScheduler(loop=self.loop, ip=self.host,
+                                       services=services)
         self.mesos = QueueScheduler()
-        super(MesosCluster, self).__init__(self.mesos, *args, **kwargs)
+        super(MesosCluster, self).__init__(self.mesos, name=name, master=master)
 
     def start(self):
         super(MesosCluster, self).start()
-        self.dask.start(self.port)
+        self.scheduler.start(self.port)
         self.workers = []
+
+        for i in range(self.n_workers):
+            self.start_worker(name='dask-worker-{}'.format(i))
 
     def stop(self):
         """ Close the cluster """
         super(MesosCluster, self).stop()
-        self.dask.close(fast=True)
+        self.scheduler.close(fast=True)
         del self.workers[:]
 
-    def start_worker(self, port=0, ncores=0, **kwargs):
+    def start_worker(self, port=0, ncores=0, name='dask-worker',
+                     cpus=None, memory=None, disk=None, **kwargs):
         """ Add a new worker to the running cluster
         Parameters
         ----------
@@ -97,9 +103,15 @@ class MesosCluster(SchedulerDriver):
         -------
         The created Worker or Nanny object.  Can be discarded.
         """
-        executor = DaskExecutor(docker='lensa/dask.mesos')
-        task = PythonTask(name='dask-worker', fn=partial(Nanny, self.host, self.port, **kwargs),
-                          executor=executor, resources=[Cpus(0.2), Mem(128)])
+        resources = [Cpus(cpus or self.worker_cpus),
+                     Mem(memory or self.worker_memory),
+                     Disk(disk or self.worker_disk)]
+        callable = partial(Nanny, self.host, self.port, **kwargs)
+
+        executor = DaskExecutor(docker=self.docker)
+        task = PythonTask(name=name, fn=callable, executor=executor,
+                          resources=resources)
+
         self.mesos.submit(task)
         self.workers.append(task.id.value)
         return task.id.value
@@ -112,7 +124,15 @@ class MesosCluster(SchedulerDriver):
         >>> w = c.start_worker(ncores=2)  # doctest: +SKIP
         >>> c.stop_worker(w)  # doctest: +SKIP
         """
-        self.kill(TaskID(value=w))
+        task_id = TaskID(value=w)
+        task = self.mesos.tasks[task_id]
+
+        # python task inited with this state, hopefully mesos doesn't use it internally
+        if task.status.state == 'TASK_STAGING':  
+            del self.mesos.tasks[task_id]
+        else:
+            self.kill(task_id)
+
         self.workers.remove(w)
 
     # def __del__(self):
@@ -122,20 +142,3 @@ class MesosCluster(SchedulerDriver):
     def scheduler_address(self):
         return self.scheduler.address
 
-
-if __name__ == '__main__':
-    import time
-    with MesosCluster(name='e', silence_logs=logging.INFO) as m:
-        w1 = m.start_worker()
-        time.sleep(5)
-        w2 = m.start_worker()
-        time.sleep(5)
-        w3 = m.start_worker()
-        time.sleep(5)
-        m.stop_worker(w3)
-        time.sleep(5)
-        m.stop_worker(w2)
-        m.mesos.wait()
- 
-
-    

@@ -28,16 +28,18 @@ class TornadoExecutor(Executor):
             while not self.loop._running:
                 sleep(0.001)
 
+        self.tasks = {}
         self.workers = {}
 
     def on_launch(self, driver, task):
         # meyba detach to a thread
+        self.tasks[task.id] = task
         status = partial(PythonTaskStatus, task_id=task.id)
         driver.update(status(state='TASK_RUNNING'))
 
         try:
             logging.info('Starting worker {}'.format(task.id))
-            fn, args, kwargs = task()
+            fn, args, kwargs = task.data
             worker = fn(loop=self.loop)
             self.workers[task.id] = worker
             self.loop.add_callback(worker._start)
@@ -50,8 +52,13 @@ class TornadoExecutor(Executor):
                                  message=e.message))
 
     def on_kill(self, driver, task_id):
+        task = self.tasks.pop(task_id)
         worker = self.workers.pop(task_id)
-        self.loop.add_callback(worker._close)
+        status = PythonTaskStatus(task_id=task.id,
+                                  state='TASK_FINISHED')  # or TASK_KILLED
+
+        self.loop.add_callback(worker._close)  # wait until stops
+        driver.update(status)
 
         if not len(self.workers):
             logging.info('Executor stops due to no more executing '
