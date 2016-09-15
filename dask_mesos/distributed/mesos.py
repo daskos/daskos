@@ -41,14 +41,9 @@ class MesosCluster(SchedulerDriver):
     def __init__(self, n_workers=0, threads_per_worker=None, loop=None,
                  name='dask-distributed', master=os.getenv('MESOS_MASTER'),
                  worker_cpus=1, worker_memory=512, worker_disk=0, docker='lensa/dask.mesos',
-                 scheduler_host='127.0.0.1', scheduler_port=8786,
+                 scheduler_host='127.0.0.1', scheduler_port=8786, diagnostics_port=8787,
                  services={'http': HTTPScheduler}, silence_logs=logging.CRITICAL):
-        if silence_logs:
-            for l in ['distributed.scheduler',
-                      'distributed.worker',
-                      'distributed.core',
-                      'distributed.nanny']:
-                logging.getLogger(l).setLevel(silence_logs)
+        self.silence_logs = silence_logs
         self.port = scheduler_port
         self.host = scheduler_host
         self.loop = loop or IOLoop()
@@ -63,6 +58,9 @@ class MesosCluster(SchedulerDriver):
         self.worker_cpus = worker_cpus
         self.worker_memory = worker_memory
         self.worker_disk = worker_disk
+        self.diagnostics_port = diagnostics_port
+        self.diagnostics = None
+        self.workers = None
         self.docker = docker
 
         self.scheduler = DaskScheduler(loop=self.loop, ip=self.host,
@@ -72,8 +70,20 @@ class MesosCluster(SchedulerDriver):
 
     def start(self):
         super(MesosCluster, self).start()
+
+        if self.silence_logs:
+            for l in ['distributed.scheduler',
+                      'distributed.worker',
+                      'distributed.core',
+                      'distributed.nanny']:
+                logging.getLogger(l).setLevel(self.silence_logs)
+
         self.scheduler.start(self.port)
         self.workers = []
+
+        if self.diagnostics_port is not None:
+            self.start_diagnostics_server(self.diagnostics_port,
+                                          silence=self.silence_logs)
 
         for i in range(self.n_workers):
             self.start_worker(name='dask-worker-{}'.format(i))
@@ -83,6 +93,8 @@ class MesosCluster(SchedulerDriver):
         super(MesosCluster, self).stop()
         self.scheduler.close(fast=True)
         del self.workers[:]
+        if self.diagnostics:
+            self.diagnostics.close()
 
     def start_worker(self, port=0, ncores=0, name='dask-worker',
                      cpus=None, memory=None, disk=None, **kwargs):
@@ -141,4 +153,29 @@ class MesosCluster(SchedulerDriver):
     @property
     def scheduler_address(self):
         return self.scheduler.address
+
+    def start_diagnostics_server(self, port=8787, show=False,
+            silence=logging.CRITICAL):
+        """ Start Diagnostics Web Server
+        This starts a web application to show diagnostics of what is happening
+        on the cluster.  This application runs in a separate process and is
+        generally available at the following location:
+            http://localhost:8787/status/
+        """
+        try:
+            from distributed.bokeh.application import BokehWebInterface
+        except ImportError:
+            logger.info("To start diagnostics web server please install Bokeh")
+            return
+
+        assert self.diagnostics is None
+        if 'http' not in self.scheduler.services:
+            self.scheduler.services['http'] = HTTPScheduler(self.scheduler,
+                    io_loop=self.scheduler.loop)
+            self.scheduler.services['http'].listen(0)
+        self.diagnostics = BokehWebInterface(
+                tcp_port=self.scheduler.port,
+                http_port=self.scheduler.services['http'].port,
+                bokeh_port=port, show=show,
+                log_level=logging.getLevelName(silence).lower())
 

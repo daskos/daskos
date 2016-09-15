@@ -1,15 +1,7 @@
-FROM satyr
+FROM lensa/satyr
 
-# TODO use conda
-RUN apk --no-cache add --virtual .build-deps \  
-    musl-dev \
-    gcc \
-    linux-headers \
-    python-dev \
- && pip --no-cache-dir install distributed \
- && rm -rf /var/cache/apk/* \
- && rm -rf /tmp/* \
- && apk del .build-deps
+RUN conda install -y nomkl dask distributed==1.13.2 \
+ && conda clean -a
 
 ADD . /opt/dask.mesos
-RUN pip --no-cache-dir install /opt/dask.mesos 
+RUN pip --no-cache-dir install /opt/dask.mesos
