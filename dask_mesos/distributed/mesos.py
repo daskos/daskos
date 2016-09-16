@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 import os
 
+import socket
 import logging
 
 from functools import partial
@@ -19,7 +20,8 @@ from satyr.messages import PythonExecutor, Cpus, Mem, Disk
 
 from distributed import Nanny, Worker, Scheduler as DaskScheduler
 from distributed.utils import ignoring, sync, All
-from distributed.http.scheduler import HTTPScheduler
+from distributed.http import HTTPWorker, HTTPScheduler
+from distributed.utils import get_ip
 
 from mesos.interface import mesos_pb2
 from satyr.proxies.messages import TaskID
@@ -38,33 +40,33 @@ class DaskExecutor(PythonExecutor):
 
 class MesosCluster(SchedulerDriver):
 
-    def __init__(self, n_workers=0, threads_per_worker=None, loop=None,
+    def __init__(self, n_workers=0, threads_per_worker=1, loop=None,
                  name='dask-distributed', master=os.getenv('MESOS_MASTER'),
                  worker_cpus=1, worker_memory=512, worker_disk=0, docker='lensa/dask.mesos',
-                 scheduler_host='127.0.0.1', scheduler_port=8786, diagnostics_port=8787,
-                 services={'http': HTTPScheduler}, silence_logs=logging.CRITICAL):
+                 host='127.0.0.1:8786', port=8786, diagnostics_port=8787,
+                 silence_logs=logging.CRITICAL):
         self.silence_logs = silence_logs
-        self.port = scheduler_port
-        self.host = scheduler_host
         self.loop = loop or IOLoop()
-        if not self.loop._running:
-            self._thread = Thread(target=self.loop.start)
-            self._thread.daemon = True
-            self._thread.start()
-            while not self.loop._running:
-                sleep(0.001)
-
         self.n_workers = n_workers
         self.worker_cpus = worker_cpus
         self.worker_memory = worker_memory
         self.worker_disk = worker_disk
         self.diagnostics_port = diagnostics_port
+        self.threads_per_worker = threads_per_worker
         self.diagnostics = None
         self.workers = None
         self.docker = docker
 
-        self.scheduler = DaskScheduler(loop=self.loop, ip=self.host,
-                                       services=services)
+        given_host = host
+        host = host or get_ip()
+        if ':' in host and port == 8786:
+            host, port = host.rsplit(':', 1)
+            port = int(port)
+        self.ip = socket.gethostbyname(host)
+        self.port = port
+
+        self.scheduler = DaskScheduler(loop=self.loop, ip=self.ip,
+                                       services={'http': HTTPScheduler})
         self.mesos = QueueScheduler()
         super(MesosCluster, self).__init__(self.mesos, name=name, master=master)
 
@@ -77,6 +79,13 @@ class MesosCluster(SchedulerDriver):
                       'distributed.core',
                       'distributed.nanny']:
                 logging.getLogger(l).setLevel(self.silence_logs)
+
+        if not self.loop._running:
+            self._thread = Thread(target=self.loop.start)
+            self._thread.daemon = True
+            self._thread.start()
+            while not self.loop._running:
+                sleep(0.001)
 
         self.scheduler.start(self.port)
         self.workers = []
@@ -96,7 +105,7 @@ class MesosCluster(SchedulerDriver):
         if self.diagnostics:
             self.diagnostics.close()
 
-    def start_worker(self, port=0, ncores=0, name='dask-worker',
+    def start_worker(self, port=0, nthreads=1, name='dask-worker',
                      cpus=None, memory=None, disk=None, **kwargs):
         """ Add a new worker to the running cluster
         Parameters
@@ -115,14 +124,18 @@ class MesosCluster(SchedulerDriver):
         -------
         The created Worker or Nanny object.  Can be discarded.
         """
-        resources = [Cpus(cpus or self.worker_cpus),
-                     Mem(memory or self.worker_memory),
-                     Disk(disk or self.worker_disk)]
-        callable = partial(Nanny, self.host, self.port, **kwargs)
+        cpus = cpus or self.worker_cpus
+        disk = disk or self.worker_disk
+        memory = memory or self.worker_memory
+        ncores = nthreads or self.threads_per_worker
+        services = {'http': HTTPWorker}
+
+        callable = partial(Nanny, self.ip, self.port, memory_limit=int(memory*1024),
+                           ncores=nthreads, **kwargs)
 
         executor = DaskExecutor(docker=self.docker)
         task = PythonTask(name=name, fn=callable, executor=executor,
-                          resources=resources)
+                          resources=[Cpus(cpus), Disk(disk), Mem(memory)])
 
         self.mesos.submit(task)
         self.workers.append(task.id.value)
