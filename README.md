@@ -26,7 +26,7 @@ Configuration:
 ```python
 from __future__ import absolute_import, division, print_function
 
-from dask_mesos import mesos, MesosExecutor
+from daskos import mesos, MesosExecutor
 
 
 @mesos(cpus=0.1, mem=64)
@@ -35,7 +35,7 @@ def add(x, y):
     return x + y
 
 
-@mesos(cpus=0.3, mem=128, image='lensa/dask.mesos')
+@mesos(cpus=0.3, mem=128, image='lensa/daskos')
 def mul(x, y):
     """Run mul on mesos in specified docker image"""
     return x * y
@@ -52,7 +52,7 @@ with MesosExecutor(name='dask') as executor:
 ```
 
 
-## Configuring dask.mesos Tasks
+## Configuring daskos Tasks
 
 You can configure your mesos tasks in your decorator, currently the following options are available:
 

@@ -1,5 +1,5 @@
 FROM lensa/satyr:latest
 
-ADD . /dask.mesos
-WORKDIR /dask.mesos
+ADD . /daskos
+WORKDIR /daskos
 RUN pip install .

@@ -7,7 +7,7 @@ import pytest
 from cloudpickle import loads
 from dask import get
 from dask.callbacks import Callback
-from dask_mesos.context import Lock, Persist
+from daskos.context import Lock, Persist
 from kazoo.client import NoNodeError
 from kazoo.recipe.lock import LockTimeout
 

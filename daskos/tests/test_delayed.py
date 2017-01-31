@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 from concurrent.futures import Future
 from dask import delayed
-from dask_mesos.delayed import MesosDelayed, MesosDelayedLeaf, mesos
-from dask_mesos.utils import key_split
+from daskos.delayed import MesosDelayed, MesosDelayedLeaf, mesos
+from daskos.utils import key_split
 from satyr.proxies.messages import Cpus, Disk, Mem
 
 

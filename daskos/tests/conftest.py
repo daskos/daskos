@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-from dask_mesos.executor import MesosExecutor
+from daskos.executor import MesosExecutor
 
 
 @pytest.yield_fixture

@@ -13,7 +13,7 @@ class PyTest(TestCommand):
 
     def finalize_options(self):
         TestCommand.finalize_options(self)
-        self.test_args = ['-v', 'dask_mesos/']
+        self.test_args = ['-v', 'daskos']
         self.test_suite = True
 
     def run_tests(self):
@@ -30,7 +30,7 @@ class PyTest(TestCommand):
         atexit._run_exitfuncs()
 
 
-setup(name='dask.mesos',
+setup(name='daskos',
       version='0.2.2',
       description='Apache Mesos backend for Dask scheduling library',
       long_description=(open('README.md').read() if exists('README.md')
@@ -41,7 +41,7 @@ setup(name='dask.mesos',
       license='Apache License, Version 2.0',
       keywords='mesos dask multiprocessing scheduling satyr',
       cmdclass={'test': PyTest},
-      packages=['dask_mesos'],
+      packages=['daskos'],
       install_requires=['toolz', 'dask>=0.9.0', 'satyr>=0.2.0'],
       setup_requires=['pytest-runner'],
       tests_require=['pytest-mock', 'pytest'],
