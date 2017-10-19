@@ -1,5 +1,6 @@
-[![Build Status](http://52.0.47.203:8000/api/badges/lensacom/dask.mesos/status.svg)](http://52.0.47.203:8000/lensacom/dask.mesos)
+
 [![Join the chat at https://gitter.im/lensacom/dask.mesos](https://badges.gitter.im/lensacom/dask.mesos.svg)](https://gitter.im/lensacom/dask.mesos?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Coding Hours](https://api.gitential.com/accounts/6/projects/118/badges/coding-hours.svg)](https://gitential.com/accounts/6/projects/118/share?uuid=979a98ec-4df1-44eb-aea6-fecee577ad60&utm_source=shield&utm_medium=shield&utm_campaign=118)
 
 [Apache Mesos](http://mesos.apache.org/) backend for [Dask](https://github.com/dask/dask) scheduling library.
 Run distributed python dask workflows on your Mesos cluster.
